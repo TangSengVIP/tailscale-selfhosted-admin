@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+auth.json
+device-names.json
+*.sqlite*
+*.db
+*.key
+*.pem
+*.log
+*-credentials.json
+backups/

@@ -1,0 +1,17 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const code=fs.readFileSync(path.join(__dirname,'../src/app.js'),'utf8').split("document.addEventListener('click'")[0];
+const elements=new Map();
+const context={Intl,Date,Number,String,Boolean,setTimeout,clearTimeout,document:{querySelector(s){if(!elements.has(s))elements.set(s,{});return elements.get(s);}}};
+vm.createContext(context);vm.runInContext(code,context);
+vm.runInContext(`state={devices:[{id:2,name:'设备10',hostname:'h',client_name:'c',user:'乙',ip:['100.64.0.10'],online:false,last_seen:100},{id:1,name:'<script>',hostname:'h',user:'甲',ip:['100.64.0.2','fd00::2'],online:true,registration_history:[{id:0}]},{id:3,name:'设备2',hostname:'h',user:'乙',ip:['100.64.0.3'],online:false,last_seen:200}]};`,context);
+assert.equal(vm.runInContext('sortedDevices()[0].id',context),1);
+vm.runInContext("deviceSort={key:'ip',direction:'asc'}",context);
+assert.equal(vm.runInContext('sortedDevices().map(n=>n.id).join()',context),'1,3,2');
+vm.runInContext("deviceSort={key:'last_seen',direction:'desc'};renderDevices()",context);
+assert.equal(vm.runInContext('sortedDevices().map(n=>n.id).join()',context),'1,3,2');
+const html=elements.get('#device-list').innerHTML;
+assert(html.includes('&lt;script&gt;'));assert(!html.includes('<script>'));
+assert(html.includes('aria-sort="descending"'));assert(html.includes('data-action="registration-history"'));
+vm.runInContext('state.devices=[];renderDevices()',context);
+assert(elements.get('#device-list').innerHTML.includes('colspan="6"'));
+console.log('PASS: sorting, escaping, registration history and empty state');

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Aurosa · 远程网络管理</title><link rel="stylesheet" href="./style.css?v=20261031-router-history"><script src="./app.js?v=20261031-router-history" defer></script></head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<main id="login" class="login-wrap" hidden>
+ <form id="login-form" class="login-card">
+  <div class="logo">A<span>◌</span></div><span class="eyebrow">AUROSA NETWORK</span>
+  <h1>连接每一处网络</h1><p class="muted">登录远程网络管理后台</p>
+  <label>管理员账号<input name="username" autocomplete="username" placeholder="管理员账号" required></label>
+  <label>登录密码<input name="password" type="password" autocomplete="current-password" required></label>
+  <p id="login-error" class="error" role="alert"></p>
+  <button class="primary full" type="submit">登录管理后台 <span>→</span></button>
+  <small>Aurosa 自建网络 · 安全连接</small>
+ </form>
+</main>
+<div id="dashboard" class="shell" hidden>
+ <aside>
+  <a class="brand" href="./"><div class="logo small">A<span>◌</span></div><div><strong>Aurosa</strong><small>远程网络管理</small></div></a>
+  <p class="nav-label">管理工作台</p>
+  <nav aria-label="主导航"><button data-tab="devices" class="selected"><span>▦</span>设备管理</button><button data-tab="users"><span>◎</span>用户管理</button><button data-tab="keys"><span>⚿</span>接入密钥</button><button data-tab="connect"><span>⇄</span>连接指南</button><button data-tab="settings"><span>⚙</span>后台设置</button></nav>
+  <div class="sidebar-bottom"><span class="dot green"></span> 自建控制服务<small data-server-url>自建 Headscale</small></div>
+ </aside>
+ <main class="content">
+  <header><div><span class="eyebrow">AUROSA / 控制台</span><h1 id="page-title">设备管理</h1></div><div class="header-actions"><span class="admin-badge">管理员</span><button id="refresh" class="quiet">刷新</button><button id="logout" class="quiet">退出登录</button></div></header>
+  <div id="toast" role="status" hidden></div>
+  <section class="stats" aria-label="网络概况"><article><span>网络设备</span><strong id="stat-devices">—</strong><small>已加入的设备</small></article><article><span>当前在线</span><strong id="stat-online" class="green-text">—</strong><small>实时连接状态</small></article><article><span>网络用户</span><strong id="stat-users">—</strong><small>按用户组控制互访</small></article><article><span>控制服务</span><strong class="server-value">Headscale</strong><small id="server-version">—</small></article></section>
+  <section data-page="devices" class="page"><div class="section-head"><div><h2>我的设备</h2><p>点击表头排序，查看设备状态与远程地址。</p></div><span class="refresh-note">每 15 秒自动刷新</span></div><div id="device-list" class="device-table-wrap"></div></section>
+  <section data-page="users" class="page" hidden><div class="section-head"><div><h2>网络用户</h2><p>按用户组开启或关闭客户端互访，默认关闭。</p></div><button id="add-user" class="primary">＋ 新建用户</button></div><div class="notice">管理员设备始终可主动访问所有设备。开启互访仅允许同组普通设备互相连接，不开放跨组访问。</div><div id="user-list" class="list"></div></section>
+  <section data-page="keys" class="page" hidden><div class="section-head"><div><h2>设备接入密钥</h2><p>为新设备生成接入凭据，默认只能使用一次。</p></div><button id="add-key" class="primary">＋ 生成密钥</button></div><div class="notice">密钥有效期仅限制新设备加入，密钥过期不会使已接入设备掉线。</div><div id="key-list" class="list"></div></section>
+  <section data-page="connect" class="page" hidden><div class="section-head"><div><h2>让设备加入网络</h2><p>所有设备使用同一个控制服务器地址。</p></div></div><div class="guide-grid"><article class="panel"><span class="step">01</span><h3>安装 Tailscale 客户端</h3><p>在电脑、手机或路由器安装对应平台的官方客户端。</p><a href="https://tailscale.com/download" target="_blank" rel="noopener noreferrer">前往官方下载 ↗</a></article><article class="panel"><span class="step">02</span><h3>选择自定义服务器</h3><p>客户端控制服务器地址填写：</p><code data-server-url>登录后显示控制服务器地址</code><button class="quiet copy-server">复制地址</button><p class="muted">客户端连接控制服务器地址，不使用管理后台地址。</p></article><article class="panel"><span class="step">03</span><h3>生成密钥并登录</h3><p>在“接入密钥”中选择用户并生成密钥，再执行登录命令。</p><button id="guide-key" class="primary">生成接入密钥</button></article><article class="panel"><span class="step">04</span><h3>访问你的设备</h3><p>管理员设备加入网络后，使用用户设备的 100.64.x.x 地址访问管理页面或 SSH 服务。</p><p class="muted">无需公网 IP 或端口转发。遇到无法直连时，流量通过 Aurosa 中继。</p></article></div></section>
+  <section data-page="settings" class="page" hidden><div class="section-head"><div><h2>后台设置</h2><p>管理登录密码与服务信息。</p></div></div><div class="guide-grid"><form id="password-form" class="panel"><h3>修改管理员密码</h3><label>当前密码<input name="current" type="password" autocomplete="current-password" required></label><label>新密码<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label>确认新密码<input name="confirm" type="password" autocomplete="new-password" minlength="12" required></label><button type="submit" class="primary">保存密码</button></form><article class="panel"><h3>服务信息</h3><dl><dt>控制服务器</dt><dd data-server-url>—</dd><dt>管理后台</dt><dd data-admin-url>—</dd><dt>中继节点</dt><dd>Aurosa Private Relay</dd><dt>网络隔离</dt><dd>默认隔离，可按用户组启用互访</dd><dt>后台会话</dt><dd>登录后 8 小时有效</dd></dl></article></div></section>
+  <footer><span>Aurosa Network</span><span id="last-updated">正在读取网络状态…</span></footer>
+ </main>
+</div>
+<dialog id="modal"><form id="modal-form"><div class="modal-head"><h2 id="modal-title"></h2><button type="button" id="modal-close" class="quiet" aria-label="关闭">✕</button></div><div id="modal-body"></div><p id="modal-error" class="error" role="alert"></p><div class="modal-actions"><button type="button" id="modal-cancel" class="quiet">取消</button><button type="submit" id="modal-submit" class="primary">保存</button></div></form></dialog>
+</body></html>

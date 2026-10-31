@@ -1,0 +1,7 @@
+// Example only: merging/replacing a live policy affects connectivity.
+{
+  "tagOwners": { "tag:aurosa-admin": [] },
+  "acls": [
+    { "action": "accept", "src": ["tag:aurosa-admin"], "dst": ["*:*"] }
+  ]
+}

@@ -1,0 +1,26 @@
+[Unit]
+Description=Chinese Headscale administration
+After=network-online.target headscale.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=headscale
+Group=headscale
+EnvironmentFile=/etc/headscale-admin/admin.env
+ExecStart=/usr/bin/python3 /opt/headscale-admin/server.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/etc/headscale-admin /var/lib/headscale
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=160M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

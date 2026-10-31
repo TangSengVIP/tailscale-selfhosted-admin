@@ -1,0 +1,14 @@
+# Keep your existing Headscale control-server proxy separately.
+admin.example.com {
+    reverse_proxy 127.0.0.1:18444
+}
+
+# Alternative: mount under /admin/ on the control server's domain.
+# Set AUROSA_ADMIN_ORIGIN=https://headscale.example.com
+# Set AUROSA_ADMIN_COOKIE_PATH=/admin/
+# Insert into the EXISTING headscale.example.com site:
+# redir /admin /admin/ 308
+# handle_path /admin/* {
+#     reverse_proxy 127.0.0.1:18444
+# }
+# Keep the existing Headscale proxy in a separate handle block.

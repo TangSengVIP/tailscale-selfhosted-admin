@@ -13,3 +13,5 @@ device-names.json
 *.log
 *-credentials.json
 backups/
+access-keys.json
+access-keys.new

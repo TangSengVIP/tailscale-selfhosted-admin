@@ -33,6 +33,7 @@ LOCK = threading.RLock()
 CLI_LOCK = threading.Lock()
 POLICY_LOCK = threading.RLock()
 DEVICE_NAMES_PATH = AUTH_PATH.parent / 'device-names.json'
+ACCESS_KEYS_PATH = AUTH_PATH.parent / 'access-keys.json'
 
 
 def device_names():
@@ -70,6 +71,57 @@ def rename_device(identifier, value, client_name=None):
         temporary.write_text(json.dumps(names, ensure_ascii=False), encoding='utf-8')
         temporary.chmod(0o600)
         temporary.replace(DEVICE_NAMES_PATH)
+
+
+def key_prefix(key):
+    return (key.get('key') or '').rstrip('.*…')
+
+
+def access_key_vault():
+    if not ACCESS_KEYS_PATH.exists():
+        return {}
+    return json.loads(ACCESS_KEYS_PATH.read_text(encoding='utf-8'))
+
+
+def remember_access_key(key, user_id):
+    """Keep recoverable credentials outside the source tree, administrator-only."""
+    with LOCK:
+        vault = access_key_vault()
+        vault[str(key['id'])] = {'key': key['key'], 'user_id': positive_id(user_id)}
+        temporary = ACCESS_KEYS_PATH.with_suffix('.new')
+        try:
+            fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+                json.dump(vault, stream)
+            temporary.chmod(0o600)
+            temporary.replace(ACCESS_KEYS_PATH)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def group_access_keys(user_id):
+    identifier = positive_id(user_id)
+    if not any(str(u['id']) == identifier for u in (hs('users', 'list') or [])):
+        raise ValueError('用户组不存在')
+    with LOCK:
+        vault = access_key_vault()
+    result = []
+    for key in hs('preauthkeys', 'list') or []:
+        if str((key.get('user') or {}).get('id')) != identifier:
+            continue
+        prefix = key_prefix(key)
+        saved = vault.get(str(key['id']), {})
+        secret = saved.get('key') or ''
+        expiry = timestamp(key.get('expiration'))
+        expired = bool(expiry and float(expiry) <= time.time())
+        used = bool(key.get('used') and not key.get('reusable'))
+        available = (not expired and not used and saved.get('user_id') == identifier
+                     and len(prefix) >= 20 and secret.startswith(prefix) and len(secret) > len(prefix))
+        result.append({'id': key['id'], 'prefix': prefix, 'key': secret if available else None,
+                       'expires': expiry, 'created': timestamp(key.get('created_at')),
+                       'reusable': bool(key.get('reusable')), 'ephemeral': bool(key.get('ephemeral')),
+                       'expired': expired, 'used': used})
+    return sorted(result, key=lambda k: int(k['id']), reverse=True)
 
 
 def mutual_rule(name):
@@ -388,8 +440,15 @@ class Handler(BaseHTTPRequestHandler):
             rename_device(data.get('id'), data.get('name'), data.get('client_name'))
         elif path in ('/api/devices/expire', '/api/devices/delete'):
             hs('nodes', path.rsplit('/', 1)[1], '--identifier='+positive_id(data.get('id')), '--force')
+        elif path == '/api/keys/group':
+            return self.respond(200, {'keys': group_access_keys(data.get('user'))})
         elif path == '/api/keys/create':
             key = create_access_key(data)
+            try:
+                remember_access_key(key, data.get('user'))
+            except (ValueError, OSError):
+                hs('preauthkeys', 'delete', '--id='+str(key['id']), '--force')
+                raise ValueError('密钥保存失败，已撤销新密钥，请稍后重试。') from None
             return self.respond(200, {'ok': True, 'key': key['key'], 'id': key['id']})
         elif path == '/api/keys/expire':
             hs('preauthkeys', 'expire', '--id='+positive_id(data.get('id')))
